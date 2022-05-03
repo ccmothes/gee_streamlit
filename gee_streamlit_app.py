@@ -20,19 +20,39 @@ except Exception as ee:
 
 # set up image collection
 
-region = ee.Geometry.BBox(-105.89218, 40.27989, -105.17284, 40.72316)
+region = ee.Geometry.BBox(-105.89218, 40.417183, -105.140642, 40.72316)
+
+
+# function to mask clouds using Sentinel-2 QA band: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2_SR
+def maskS2clouds(image):
+    qa = image.select('QA60')
+    # Bits 10 and 11 are clouds and cirrus, respectively.
+    cloudBitMask = 1 << 10
+    cirrusBitMask = 1 << 11
+    # Both flags should be set to zero, indicating clear conditions.
+    mask = qa.bitwiseAnd(cloudBitMask).eq(0)
+    mask = mask.bitwiseAnd(cirrusBitMask).eq(0)
+    return image.updateMask(mask).divide(10000)
 
 
 # need to use Harmonized Sentinel collection because post Jan 2022 bands are different
 sent2 = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
   .filterBounds(region)
+  
+#function to apply scaling factors for viz: https://geemap.org/notebooks/99_landsat_9/
+def apply_scale_factors(image):
+    opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
+    thermalBands = image.select('ST_B.*').multiply(0.00341802).add(149.0)
+    return image.addBands(opticalBands, None, True).addBands(thermalBands, None, True)
     
 land8 = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
-    .filterBounds(region)
+    .filterBounds(region) \
+    .map(apply_scale_factors)
 
 
 land9 = ee.ImageCollection('LANDSAT/LC09/C02/T1_L2') \
-    .filterBounds(region)
+    .filterBounds(region) \
+    .map(apply_scale_factors)
     
     
 # add "SPACECRAFT_ID" attribute to match landsat so can pull spacecraft name from chosen image
@@ -62,7 +82,7 @@ d1 = st.sidebar.date_input(
 
 
 #st.write(d1.strftime("%Y-%m-%d"))
-st.write(d1)
+#st.write(d1)
 
 #create date function to get image closest to chosen date
 def date_fun(image):
@@ -82,10 +102,14 @@ collectionSort = collection.map(date_fun).sort('dateDist')
 
 
 #Print aircraft and date of nearest image
-st.write(collectionSort.first().date().format('YYYY-MM-dd').getInfo())
+st.write("**Date of Observation:** " + collectionSort.first().date().format('YYYY-MM-dd').getInfo())
 
-st.write(collectionSort.first().get('SPACECRAFT_ID').getInfo())
+st.write("**Spacecraft:** " + collectionSort.first().get('SPACECRAFT_ID').getInfo())
 
+
+#add checkbox to choose viz parameters
+viz = st.radio("Choose Visualization Parameters: ",
+               ('True Color', 'Wildfire Damage', "Snow Probability"))
 
 # add image to map
 Map = geemap.Map(add_google_map=False, layer_ctrl=True)
@@ -96,35 +120,24 @@ Map.centerObject(region, zoom=11)
 # set of vis parameters depending on spacecraft
 spacecraft = collectionSort.first().get('SPACECRAFT_ID').getInfo()
 
-
 if spacecraft == 'Sentinel-2A':
     vizTC = {
-    'bands' : ['B4', 'B3', 'B2'],
-    'min': 0,
-    'max': 8000
-    } 
+        'bands': ['B4', 'B3', 'B2'],
+        'min': 0,
+        'max': 0.3}
+    plotImage = collectionSort.first()
+    Map.addLayer(maskS2clouds(plotImage), vizTC, 'True Color')
+    
 else:
-     vizTC = {
-    'bands' : ['SR_B4', 'SR_B3', 'SR_B2'],
-    'min': 6000,
-    'max': 12000
-    } 
+    #snow probability for landsat (NDSI) is the normalized difference between B3 and B6
+    
+    vizTC = {
+        'bands': ['SR_B4', 'SR_B3', 'SR_B2'],
+        'min': 0,
+        'max': 0.3}
+    Map.addLayer(collectionSort.first(), vizTC, 'True Color')
 
-
-vizSnow = {
-    'bands': ['MSK_SNWPRB'],
-    'min': 0,
-    'max': 1,
-    'palette': ['FFFFFF', 'FF0000']
-}
-
-vizFire = {
-    'bands': ['B12', 'B8', 'B4'],
-    'min': 0,
-    'max': 3000
-}
-
-Map.addLayer(collectionSort.first(), vizTC, 'True Color')
+#Map.addLayer(plotImage, vizTC, 'True Color')
 #Map.addLayer(collection, vizSnow, "Snow Probability")
 #Map.addLayer(collection, vizFire, "Wildfire")
 
