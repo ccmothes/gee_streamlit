@@ -11,6 +11,8 @@ import ee
 import datetime
 from datetime import date
 from datetime import datetime
+import pandas as pd
+
 
 try:
         ee.Initialize()
@@ -18,8 +20,12 @@ except Exception as ee:
         ee.Authenticate()
         ee.Initialize()
 
-# set up image collection
+# set up data/image collection
 
+# read in csv of study sites
+sites = pd.read_csv("C:/Users/ccmothes/Desktop/poudrePortal/data/poudreportal_sites.csv")
+
+# region to clip collection to
 region = ee.Geometry.BBox(-105.89218, 40.417183, -105.140642, 40.72316)
 
 
@@ -117,25 +123,63 @@ Map = geemap.Map(add_google_map=False, layer_ctrl=True)
 Map.centerObject(region, zoom=11)
 
 
+#add study sites
+Map.add_points_from_xy(sites, x="long", y="lat", layer_name = "Study Sites")
+
+
 # set of vis parameters depending on spacecraft
 spacecraft = collectionSort.first().get('SPACECRAFT_ID').getInfo()
 
+plotImage = collectionSort.first()
+
 if spacecraft == 'Sentinel-2A':
-    vizTC = {
+    if viz == 'True Color':
+        vizParams = {
         'bands': ['B4', 'B3', 'B2'],
         'min': 0,
         'max': 0.3}
-    plotImage = collectionSort.first()
-    Map.addLayer(maskS2clouds(plotImage), vizTC, 'True Color')
+        Map.addLayer(maskS2clouds(plotImage), vizParams, viz)
+    elif viz == 'Wildfire Damage':
+        vizParams = {
+        'bands': ['B12', 'B8', 'B4'],
+        'min': 0,
+        'max': 0.3
+            }
+        Map.addLayer(maskS2clouds(plotImage), vizParams, viz)
+    else:
+        vizParams = {
+        'bands': ['MSK_SNWPRB'],
+        'min': -1,
+        'max': 1,
+        'palette': ['green', 'white']
+            }
+        Map.addLayer(plotImage, vizParams, viz)
     
 else:
     #snow probability for landsat (NDSI) is the normalized difference between B3 and B6
-    
-    vizTC = {
+    if viz == 'True Color':
+        vizParams = {
         'bands': ['SR_B4', 'SR_B3', 'SR_B2'],
         'min': 0,
         'max': 0.3}
-    Map.addLayer(collectionSort.first(), vizTC, 'True Color')
+        Map.addLayer(plotImage, vizParams, viz)
+
+    elif viz == 'Wildfire Damage':
+        vizParams = {
+        'bands': ['SR_B7', 'SR_B5', 'SR_B4'],
+        'min': 0,
+        'max': 0.3}
+        Map.addLayer(plotImage, vizParams, viz)
+
+    else:
+        plotImage2 = plotImage.normalizedDifference(['SR_B3', 'SR_B6'])
+        vizParams = {
+        'min': -1,
+        'max': 1,
+        'palette': ['green', 'white']
+            }
+        Map.addLayer(plotImage2, vizParams, viz)
+   
 
 #Map.addLayer(plotImage, vizTC, 'True Color')
 #Map.addLayer(collection, vizSnow, "Snow Probability")
