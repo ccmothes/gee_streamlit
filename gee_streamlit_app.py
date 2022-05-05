@@ -23,7 +23,9 @@ except Exception as ee:
 # set up data/image collection
 
 # read in csv of study sites
-sites = pd.read_csv("C:/Users/ccmothes/Desktop/poudrePortal/data/poudreportal_sites.csv")
+#sites = pd.read_csv("C:/Users/ccmothes/Desktop/poudrePortal/data/poudreportal_sites.csv")
+sites = pd.read_csv("https://raw.githubusercontent.com/ccmothes/gee_streamlit/master/poudreportal_sites.csv")
+
 
 # region to clip collection to
 region = ee.Geometry.BBox(-105.89218, 40.417183, -105.140642, 40.72316)
