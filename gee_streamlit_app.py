@@ -14,11 +14,11 @@ from datetime import datetime
 import pandas as pd
 
 
-try:
-        ee.Initialize()
-except Exception as ee:
-        ee.Authenticate()
-        ee.Initialize()
+#try:
+#        ee.Initialize()
+#except Exception as ee:
+#        ee.Authenticate()
+#        ee.Initialize()
 
 # set up data/image collection
 
