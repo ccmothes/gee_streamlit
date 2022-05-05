@@ -13,7 +13,7 @@ from datetime import date
 from datetime import datetime
 import pandas as pd
 
-
+ee.Initialize()
 #try:
 #        ee.Initialize()
 #except Exception as ee:
