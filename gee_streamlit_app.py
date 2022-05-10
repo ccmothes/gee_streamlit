@@ -14,7 +14,7 @@ from datetime import datetime
 import pandas as pd
 
 #ee.Authenticate()
-#ee.Initialize()
+ee.Initialize()
 #try:
 #        ee.Initialize()
 #except Exception as ee:
